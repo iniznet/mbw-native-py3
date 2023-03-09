@@ -15,4 +15,4 @@ You might want to use builder helpers to help you develop your mod easier and ma
 ## Known issues
 So far, I don't find any issue, but I'm not sure if it's because I'm not using it enough. If you find any issue, please report it, or even better, fix it and make a pull request.
 
-- [ ]
+- [ ] No known issues
