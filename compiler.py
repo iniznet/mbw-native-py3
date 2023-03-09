@@ -17,19 +17,19 @@ try:
 	else:
 		from header_common import *
 except:
-	print('\nError importing header_common.py file:\n\n%s' % formatted_exception())
-	if 'wait' in sys.argv: raw_input('Press Enter to finish>')
+	print(('\nError importing header_common.py file:\n\n%s' % formatted_exception()))
+	if 'wait' in sys.argv: input('Press Enter to finish>')
 	exit()
 
 
 
 def parse_int(value):
-	if isinstance(value, list) or isinstance(value, tuple): return map(parse_int, value)
+	if isinstance(value, list) or isinstance(value, tuple): return list(map(parse_int, value))
 	#if isinstance(value, VARIABLE) and value.is_static and (value.module is not None) and (value.module[5]): return long(value) & 0xffffffff
 	try:
 		if value.is_static and value.module[5]: return value.__long__() & 0xffffffff
 	except: pass
-	return long(value)
+	return int(value)
 
 
 # Standard W.R.E.C.K. exception class. Used to differentiate Python-generated exceptions from internal exceptions,
@@ -38,7 +38,7 @@ class MSException(Exception):
 
 	def formatted(self):
 		output = []
-		for index in xrange(len(self.args)):
+		for index in range(len(self.args)):
 			prefix = '  ' * index
 			messages = self.args[index].strip().split('\n')
 			for message in messages:
@@ -54,7 +54,7 @@ class AGGREGATE(dict):
 	def __or__(self, other):
 		if not other: return self
 		result = AGGREGATE(self)
-		for key, value in other.iteritems():
+		for key, value in other.items():
 			if type(value) == float: result[key] = max(result.get(key, 0.0), value)
 			else: result[key] = result.get(key, 0) | value
 		#result.update(other)
@@ -90,7 +90,7 @@ def unparse_attr_aggregate(value):
 	})
 def unparse_wp_aggregate(value):
 	if isinstance(value, AGGREGATE): return value
-	return AGGREGATE([(i, (value >> (10*i)) & 0x3FF) for i in xrange(num_weapon_proficiencies)])
+	return AGGREGATE([(i, (value >> (10*i)) & 0x3FF) for i in range(num_weapon_proficiencies)])
 def unparse_terrain_aggregate(value):
 	value = str(value).lower()
 	if value[0:2] == '0x':
@@ -113,7 +113,7 @@ def unparse_terrain_aggregate(value):
 			'deep_water': (int('0x0%s' % value[-16:-15], 16) >> 3) & 0x1,
 		})
 	else:
-		value = long(value)
+		value = int(value)
 		return AGGREGATE({
 			'terrain_seed': value & 0xffffffff,
 			'river_seed': (value >> 32) & 0x7fffffff,
@@ -227,9 +227,9 @@ class VARIABLE(object):
 				if self.value is not None: return self.value
 				if self.is_static: raise MSException('identifier %r value is not defined' % self)
 				else: raise MSException('variable %r is not allocated' % self)
-		except MSException, e:
+		except MSException as e:
 			raise MSException('failed to calculate expression %r' % self, *e.args)
-		except Exception, e:
+		except Exception as e:
 			raise MSException('failed to calculate expression %r' % self, e.message)
 
 	def __int__(self): return self.__long__()
@@ -241,7 +241,7 @@ class VARIABLE(object):
 			operations = []
 			tmp_used_loc = set()
 			# Pre-calculate operands
-			for index in xrange(len(self.operands)):
+			for index in range(len(self.operands)):
 				operand = self.operands[index]
 				if isinstance(operand, VARIABLE):
 					if operand.is_expression and not(operand.is_static):
@@ -260,7 +260,7 @@ class VARIABLE(object):
 						local_depth += 1
 						#print('Operand %r depth %d' % (operand, local_depth))
 					else:
-						self.operands[index] = long(operand)
+						self.operands[index] = int(operand)
 						if operand.module == WRECK.l: tmp_used_loc.add(operand.name)
 			if self.operation   == 'neg': operations.extend([store_sub, 3, destination, 0, self.operands[0]])
 			elif self.operation == 'abs':
@@ -283,14 +283,14 @@ class VARIABLE(object):
 			elif self.operation == '|'  : operations.extend([store_or, 2, destination, self.operands[0], self.operands[1]])
 			else: raise MSException('expression %r contains illegal operation %s' % (self, self.operation))
 			return total_commands, operations, tmp_used_loc
-		except MSException, e:
+		except MSException as e:
 			raise MSException('failed to generate dynamic code for expression %r' % self, *e.args)
-		except Exception, e:
+		except Exception as e:
 			raise MSException('failed to generate dynamic code for expression %r' % self, e.message)
 	def newcopy(self):
 		cls = self.__class__
 		result = cls.__new__(cls)
-		for k, v in self.__dict__.items():
+		for k, v in list(self.__dict__.items()):
 			if type(k) == VARIABLE and VARIABLE.is_expression == True:
 				setattr(result, k, self.newcopy(v))
 			else:
@@ -323,8 +323,8 @@ class VAR_PROPERTY(VARIABLE):
 
 	def __val__(self):
 		try: result = self.module[7][int(self.entity)]
-		except MSException, e: raise MSException('failed to calculate property %s' % repr(self), *e.args)
-		except Exception, e: raise MSException('failed to calculate property %s' % repr(self), e.message)
+		except MSException as e: raise MSException('failed to calculate property %s' % repr(self), *e.args)
+		except Exception as e: raise MSException('failed to calculate property %s' % repr(self), e.message)
 		for key, convertor, default in self.retrieval:
 			try:
 				result = result[key]
@@ -334,7 +334,7 @@ class VAR_PROPERTY(VARIABLE):
 		return result
 
 	def __int__(self): return int(self.__val__())
-	def __long__(self): return long(self.__val__())
+	def __long__(self): return int(self.__val__())
 	def __float__(self): return float(self.__val__())
 
 
@@ -708,7 +708,7 @@ class WRECK(object):
 
 	# SUPPORT FOR DIALOG STATES
 	dialog_states_list = ['start','party_encounter','prisoner_liberated','enemy_defeated','party_relieved','event_triggered','close_window','trade','exchange_members', 'trade_prisoners','buy_mercenaries','view_char','training','member_chat','prisoner_chat']
-	dialog_states_dict = dict([(dialog_states_list[index], index) for index in xrange(len(dialog_states_list))])
+	dialog_states_dict = dict(zip(dialog_states_list, range(len(dialog_states_list))))
 	dialog_uids = {}
 	dialog_states_usage = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 
@@ -798,9 +798,9 @@ def register_plugin(name = None, glob = None):
 		finally:
 			del frame_previous
 			del frame_current
-	for opname, opdef in WRECK.syntax_extensions.iteritems():
+	for opname, opdef in WRECK.syntax_extensions.items():
 		glob[opname] = opdef
-	for varname, varvalue in WRECK.plugin_globals.iteritems():
+	for varname, varvalue in WRECK.plugin_globals.items():
 		glob[varname] = varvalue
 
 def require_plugin(*plugins):
@@ -815,7 +815,7 @@ class CUSTOM_OPERATION(object):
 	def __call__(self, *argl):
 		try:
 			return self.callback(*argl) if self.callback else []
-		except Exception, e:
+		except Exception as e:
 			raise MSException('illegal syntax for custom operation `%s`.`%s`' % (self.module, self.name), *e.args)
 	def __or__(self, other):
 		if other == neg: other = 'neg'
@@ -855,7 +855,7 @@ def export_plugin_globals(update_array = None, **plugin_globals):
 
 def undefined_identifiers():
 	undefined = []
-	for uidlist in REQUIRED_UIDS.itervalues():
+	for uidlist in REQUIRED_UIDS.values():
 		for varname in uidlist[1]:
 			undefined.append((uidlist[0][varname].formatted_name(), uidlist[0][varname].references))
 	return undefined
@@ -889,7 +889,7 @@ def calculate_identifiers(source, uid, mask_uid = None, *argl):
 	index = -1
 	try:
 		opmask = uid[5]
-		for index in xrange(len(source)):
+		for index in range(len(source)):
 			name = internal_identifier(source[index][0])
 			if (name in uid[0]) and (name not in uid[1]):
 				if not WRECK.suppress_duplicate_warnings:
@@ -898,9 +898,9 @@ def calculate_identifiers(source, uid, mask_uid = None, *argl):
 				setattr(uid, name, index | opmask)
 				if mask_uid:
 					setattr(mask_uid, name, 1 << index)
-	except MSException, e:
+	except MSException as e:
 		raise MSException('failed to parse identifier for %r element #%d' % (uid[2], index), *e.args)
-	except Exception, e:
+	except Exception as e:
 		raise MSException('failed to parse identifier for %r element #%d' % (uid[2], index), e.message)
 	uid[4] = False
 	if mask_uid: mask_uid[4] = False
@@ -924,9 +924,9 @@ def allocate_quick_strings():
 				setattr(qstrings, q_name, opmask_quick_string | index)
 				WRECK.qstr_vtv[q[1]] = getattr(qstrings, q_name)
 				index += 1
-	except MSException, e:
+	except MSException as e:
 		raise MSException('failed to allocate quick strings', *e.args)
-	except Exception, e:
+	except Exception as e:
 		raise MSException('failed to allocate quick strings', e.message)
 		
 def allocate_global_variables(enforce_sgc = True):
@@ -939,7 +939,7 @@ def allocate_global_variables(enforce_sgc = True):
 			variables_file.close()
 		except IOError:
 			pass
-		except Exception, e:
+		except Exception as e:
 			raise MSException('general error reading %s/variables.txt file' % WRECK.destination, formatted_exception())
 	try:
 		for var_name in globals_list:
@@ -951,13 +951,13 @@ def allocate_global_variables(enforce_sgc = True):
 			WRECK.g.__setattr__(var_name, opmask_variable|max_global_index)
 			WRECK.uninitialized.add(var_name)
 			max_global_index += 1
-	except Exception, e:
+	except Exception as e:
 		args = e.args if isinstance(e, MSException) else []
 		raise MSException('failed to allocate global variable `%s`' % var_name, *args)
 	# FIX: THIS IS TOO EARLY TO WRECK GLOBALS, SOME MAY STILL BE PARSED FROM TEXT! NEED TO MOVE CODE BELOW TO WRECK PHASE
 	try:
 		new_vars = list(WRECK.g[1])
-	except Exception, e:
+	except Exception as e:
 		raise MSException('failed to allocate global variable `%s`' % var_name)
 	try:
 		for var_name in new_vars:
@@ -966,7 +966,7 @@ def allocate_global_variables(enforce_sgc = True):
 			WRECK.uninitialized.add(var_name)
 			WRECK.g.__setattr__(var_name, opmask_variable|max_global_index)
 			max_global_index += 1
-	except Exception, e:
+	except Exception as e:
 		args = e.args if isinstance(e, MSException) else []
 		raise MSException('failed to allocate new global variable `%s`' % var_name, *args)
 	WRECK.globals_list = globals_list
@@ -987,7 +987,7 @@ def preprocess_entities_internal(glob):
 			troop_tuple = glob['troops'][parse_int(base)]
 			troop_tuple[14] = upg1
 			if upg2: troop_tuple[15] = upg2
-		except Exception, e:
+		except Exception as e:
 			raise MSException('upgrade operation failed', formatted_exception())
 
 	#dialog_states compatibility with vanilla compiler
@@ -1011,7 +1011,7 @@ def preprocess_entities_internal(glob):
 		e[4] = e[4].replace(' ', '_')
 		output_token = e[4]
 		found = 0
-		for i_t in xrange(len(WRECK.dialog_states_list)):
+		for i_t in range(len(WRECK.dialog_states_list)):
 			if output_token == WRECK.dialog_states_list[i_t]:
 				found = 1
 				break
@@ -1139,26 +1139,26 @@ def process_factions(e, index):
 def aggregate_factions(entities):
 	relations = []
 	faction_names = []
-	for i in xrange(len(entities)):
+	for i in range(len(entities)):
 		name = entities[i][0].split()[0]
 		faction_names.append(name)
 		r = [0.0 for j in range(len(entities))]
 		relations.append(r)
-	for index in xrange(len(entities)):
-		for key, value in entities[index][1].iteritems():
+	for index in range(len(entities)):
+		for key, value in entities[index][1].items():
 			key = parse_int(key)
 			stored_val = relations[index][key]
 			if (stored_val != value) and (stored_val != 0) and not('fac' in sys.argv):
 				WRECK.notices.append('Faction relations conflict: %r with %r values %f and %f.' % (faction_names[index], faction_names[key], stored_val, value))
 			relations[index][key] = value
 			relations[key][index] = value
-	for index in xrange(len(entities)):
+	for index in range(len(entities)):
 		rels = [0.0] * len(entities)
-		for key in xrange(len(entities)):
+		for key in range(len(entities)):
 			rels[key] = relations[index][key]
 		rels[index] = entities[index][2]
 		entities[index][1] = rels
-	for index in xrange(len(entities)):
+	for index in range(len(entities)):
 		entities[index] = '%s\r\n%s\r\n0 ' % (entities[index][0], ''.join([' %f ' % fr for fr in entities[index][1]]))
 	entities.insert(0, 'factionsfile version 1\r\n%d\r\n' % len(entities))
 	return ''.join(entities)
@@ -1171,7 +1171,7 @@ def aggregate_parties(entities):
 	return '\r\n'.join(entities)
 
 def process_party_templates(e, index):
-	troops = ' '.join([(('%d %d %d %d' % tuple(parse_int(e[6][i]))) if i < len(e[6]) else '-1') for i in xrange(6)])
+	troops = ' '.join([(('%d %d %d %d' % tuple(parse_int(e[6][i]))) if i < len(e[6]) else '-1') for i in range(6)])
 	return 'pt_%s %s %d %d %d %d %s ' % (compiled_identifier(e[0], 'party_template'), external_string(e[1]), parse_int(e[2]), e[3], parse_int(e[4]), e[5], troops)
 def aggregate_party_templates(entities):
 	entities.insert(0, 'partytemplatesfile version 1\r\n%d' % len(entities))
@@ -1203,18 +1203,18 @@ def aggregate_particle_systems(entities):
 
 def process_troops(e, index):
 	result = ['trp_%s %s %s %s %s %s %s %d %s %s' % (compiled_identifier(e[0], 'troop'), external_string(e[1]), external_string(e[2]), external_string(e[13]), e[3], e[4], e[5], parse_int(e[6]), parse_int(e[14]), parse_int(e[15]))]
-	result.append('  ' + ''.join([('%d %d ' % ((parse_int(e[7][i][0]), e[7][i][1] << 24) if i < len(e[7]) else (-1, 0))) for i in xrange(64)]))
+	result.append('  ' + ''.join([('%d %d ' % ((parse_int(e[7][i][0]), e[7][i][1] << 24) if i < len(e[7]) else (-1, 0))) for i in range(64)]))
 	if not isinstance(e[8], AGGREGATE): e[8] = unparse_attr_aggregate(e[8])
 	if not isinstance(e[9], AGGREGATE): e[9] = unparse_wp_aggregate(e[9])
 	result.append('  %d %d %d %d %d' % (e[8].get('str', 0), e[8].get('agi', 0), e[8].get('int', 0), e[8].get('cha', 0), e[8].get('level', 0)))
-	result.append((' %d' * num_weapon_proficiencies) % tuple([e[9][index] for index in xrange(num_weapon_proficiencies)]))
-	result.append(''.join(['%d ' % ((parse_int(e[10]) >> (32*i))&0xffffffff) for i in xrange(num_skill_words)]))
+	result.append((' %d' * num_weapon_proficiencies) % tuple([e[9][index] for index in range(num_weapon_proficiencies)]))
+	result.append(''.join(['%d ' % ((parse_int(e[10]) >> (32*i))&0xffffffff) for i in range(num_skill_words)]))
 	face_words = []
 	for face_key in (e[11], e[12]):
 		word_keys = []
-		for word_no in xrange(4):
+		for word_no in range(4):
 			word_keys.append((face_key >> (64 * word_no)) & 0xFFFFFFFFFFFFFFFF)
-		for word_no in xrange(4):
+		for word_no in range(4):
 			face_words.append("%d "%(word_keys[3 - word_no]))
 	result.append('  %s\r\n' % ''.join(face_words))
 	return '\r\n'.join(result)
@@ -1269,7 +1269,7 @@ def aggregate_skins(entities):
 def process_scripts(entity, index):
 	#return entity
 	try: return '%s -1\r\n %s ' % (compiled_identifier(entity[0], 'script'), parse_module_code(entity[1], 'script.%s' % entity[0], True))
-	except MSException, e: raise MSException('failed to compile script %s (#%d)' % (entity[0], index), *e.args)
+	except MSException as e: raise MSException('failed to compile script %s (#%d)' % (entity[0], index), *e.args)
 def aggregate_scripts(entities):
 	#return None
 	entities.insert(0, 'scriptsfile version 1\r\n%d' % len(entities))
@@ -1288,7 +1288,7 @@ def process_items(e, index):
 	output.append('\r\n%d\r\n' % len(e[8]))
 	for trigger, code_block in e[8]:
 		try: output.append('%f  %s \r\n' % (trigger, parse_module_code(code_block, 'itm.%s(#%d).%s' % (e[0], index, simple_trigger_to_string(trigger)))))
-		except MSException, er: raise MSException('failed to compile trigger for item %s (#%d)' % (e[0], index), *er.args)
+		except MSException as er: raise MSException('failed to compile trigger for item %s (#%d)' % (e[0], index), *er.args)
 	return ''.join(output)
 def aggregate_items(entities):
 	entities.insert(0, 'itemsfile version 3\r\n%d' % len(entities))
@@ -1301,7 +1301,7 @@ def process_map_icons(e, index):
 		output = ['%s %s %s %f %d 0 0 0 %d' % (e[0], e[1], e[2], e[3], parse_int(e[4]), len(e[8]))]
 	for trigger, code_block in e[8]:
 		try: output.append('%f  %s ' % (trigger, parse_module_code(code_block, 'icon.%s(#%d).%s' % (compiled_identifier(e[0], 'map_icon'), index, simple_trigger_to_string(trigger)))))
-		except MSException, er: raise MSException('failed to compile trigger for map icon %s (#%d)' % (e[0], index), *er.args)
+		except MSException as er: raise MSException('failed to compile trigger for map icon %s (#%d)' % (e[0], index), *er.args)
 	output.append('\r\n')
 	return '\r\n'.join(output)
 def aggregate_map_icons(entities):
@@ -1312,7 +1312,7 @@ def process_scene_props(e, index):
 	output = ['spr_%s %s %s %s %s %d' % (compiled_identifier(e[0], 'scene_prop'), e[1], get_spr_hit_points(e[1]), e[2], e[3], len(e[4]))]
 	for trigger, code_block in e[4]:
 		try: output.append('%f  %s ' % (trigger, parse_module_code(code_block, 'spr.%s(#%d).%s' % (e[0], index, simple_trigger_to_string(trigger)))))
-		except MSException, er: raise MSException('failed to compile trigger for scene prop %s (#%d)' % (e[0], index), *er.args)
+		except MSException as er: raise MSException('failed to compile trigger for scene prop %s (#%d)' % (e[0], index), *er.args)
 	output.append('\r\n')
 	return '\r\n'.join(output)
 def aggregate_scene_props(entities):
@@ -1321,17 +1321,17 @@ def aggregate_scene_props(entities):
 	return '\r\n'.join(entities)
 def process_simple_triggers(e, index):
 	try: return '%f  %s ' % (e[0], parse_module_code(e[1], '%s(#%d)' % (simple_trigger_to_string(e[0]), index)))
-	except MSException, er: raise MSException('failed to compile simple trigger #%d' % (index), *er.args)
+	except MSException as er: raise MSException('failed to compile simple trigger #%d' % (index), *er.args)
 def aggregate_simple_triggers(entities):
 	entities.insert(0, 'simple_triggers_file version 1\r\n%d' % len(entities))
 	entities.append('')
 	return '\r\n'.join(entities)
 def process_tableaus(e, index):
 	try: return 'tab_%s %s %s %s %s %s %s %s %s %s ' % (compiled_identifier(e[0], 'tableu'), e[1], e[2], e[3], e[4], e[5], e[6], e[7], e[8], parse_module_code(e[9], 'tableau.%s(#%d)' % (e[0], index)))
-	except MSException, er: raise MSException('failed to compile tableau %s (#%d)' % (e[0], index), *er.args)
+	except MSException as er: raise MSException('failed to compile tableau %s (#%d)' % (e[0], index), *er.args)
 def process_triggers(e, index):
 	try: return '%f %f %f  %s  %s ' % (e[0], e[1], e[2], parse_module_code(e[3], '%s(#%d).condition' % (trigger_to_string(e[0], e[1], e[2]), index)), parse_module_code(e[4], '%s(#%d).consequence' % (trigger_to_string(e[0], e[1], e[2]), index)))
-	except MSException, er: raise MSException('failed to compile trigger #d' % (index), *er.args)
+	except MSException as er: raise MSException('failed to compile trigger #d' % (index), *er.args)
 def aggregate_triggers(entities):
 	entities.insert(0, 'triggersfile version 1\r\n%d' % len(entities))
 	entities.append('')
@@ -1340,7 +1340,7 @@ def process_presentations(e, index):
 	output = ['prsnt_%s %s %s %d' % (compiled_identifier(e[0], 'presentation'), e[1], parse_int(e[2]), len(e[3]))]
 	for trigger, code_block in e[3]:
 		try: output.append('%f  %s ' % (trigger, parse_module_code(code_block, 'prsnt.%s(#%d).%s' % (e[0], index, simple_trigger_to_string(trigger)))))
-		except MSException, er: raise MSException('failed to compile trigger for presentation %s (#%d)' % (e[0], index), *er.args)
+		except MSException as er: raise MSException('failed to compile trigger for presentation %s (#%d)' % (e[0], index), *er.args)
 	output.append('\r\n')
 	return '\r\n'.join(output)
 def aggregate_presentations(entities):
@@ -1356,7 +1356,7 @@ def process_mission_templates(e, index):
 	WRECK.trigger_ID = 0
 	for t0, t1, t2, script1, script2 in e[5]:
 		try: output.append('%f %f %f  %s  %s ' % (t0, t1, t2, parse_module_code(script1, 'mt.%s(#%d).%s(#%d).condition' % (e[0], index, trigger_to_string(t0, t1, t2), WRECK.trigger_ID)), parse_module_code(script2, 'mt.%s(#%d).%s(#%d).consequence' % (e[0], index, trigger_to_string(t0, t1, t2), WRECK.trigger_ID))))
-		except MSException, er: raise MSException('failed to compile trigger for mission template %s (#%d)' % (e[0], index), *er.args)
+		except MSException as er: raise MSException('failed to compile trigger for mission template %s (#%d)' % (e[0], index), *er.args)
 		WRECK.trigger_ID += 1
 	output.append('\r\n')
 	return '\r\n'.join(output)
@@ -1366,12 +1366,12 @@ def aggregate_mission_templates(entities):
 	return '\r\n'.join(entities)
 def process_game_menus(e, index):
 	try: output = ['menu_%s %s %s none %s %d\r\n' % (compiled_identifier(e[0], 'game_menu'), e[1], external_string(e[2]), parse_module_code(e[4], 'mnu.%s(#%d)'%(e[0],index)), len(e[5]))]
-	except MSException, er: raise MSException('failed to compile entry code for menu %s (#%d)' % (e[0], index), *er.args)
+	except MSException as er: raise MSException('failed to compile entry code for menu %s (#%d)' % (e[0], index), *er.args)
 	for mno in e[5]:
 		last_text = mno[4]
 		if not last_text: last_text = '.'
 		try: output.append(' mno_%s  %s  %s  %s  %s ' % (mno[0], parse_module_code(mno[1], 'mnu.%s(#%d).mno_%s.condition'%(e[0],index,mno[0])), external_string(mno[2]), parse_module_code(mno[3], 'mnu.%s(#%d).mno_%s.choice'%(e[0],index,mno[0])), external_string(last_text)))
-		except MSException, er: raise MSException('failed to compile code for menu item %s in menu %s (#%d)' % (mno[0], e[0], index), *er.args)
+		except MSException as er: raise MSException('failed to compile code for menu item %s in menu %s (#%d)' % (mno[0], e[0], index), *er.args)
 	return ''.join(output)
 def aggregate_game_menus(entities):
 	entities.insert(0, 'menusfile version 1\r\n %d' % len(entities))
@@ -1403,7 +1403,7 @@ def process_dialogs(e, index):
 		dialog_uid = new_uid
 	WRECK.dialog_uids[dialog_uid] = e[3]
 	try: return '%s %d %d  %s %s  %d  %s %s ' % (dialog_uid, parse_int(e[0]), dialog_state, parse_module_code(e[2], 'dialog.%s(#%d).condition'%(e[1],index)), external_string(e[3]), target_state, parse_module_code(e[5], 'dialog.%s(#%d).result'%(e[1],index)), e[6])
-	except MSException, er: raise MSException('failed to compile code for dialog %s (#%d)' % (dialog_uid, index), *er.args)
+	except MSException as er: raise MSException('failed to compile code for dialog %s (#%d)' % (dialog_uid, index), *er.args)
 def aggregate_dialogs(entities):
 	for i in range(len(WRECK.dialog_states_list)):
 		if WRECK.dialog_states_usage[i] == 0: raise MSException('Output token (dialog state) not found %r.' % (WRECK.dialog_states_list[i], ))
@@ -1456,7 +1456,7 @@ parsers = {
 	'map_icons':         { 'parser': (id, int, id, float, int, OPTIONAL(float, None), OPTIONAL(float, None), OPTIONAL(float, None), OPTIONAL([(float, SCRIPT)], []) ), 'processor': process_map_icons, 'aggregator': aggregate_map_icons },
 	'meshes':            { 'parser': (id, int, id, float, float, float, float, float, float, float, float, float), 'processor': process_meshes, 'aggregator': aggregate_simple },
 	'mission_templates': { 'parser': (id, int, int, str, [(int, int, int, int, int, [int])], [TRIGGER]), 'processor': process_mission_templates, 'aggregator': aggregate_mission_templates },
-	'tracks':            { 'parser': (id, file, int, int), 'processor': process_music, 'aggregator': aggregate_simple },
+	'tracks':            { 'parser': (id, open, int, int), 'processor': process_music, 'aggregator': aggregate_simple },
 	'particle_systems':  { 'parser': (id, int, id, int, float, float, float, float, float, (float, float), (float, float), (float, float), (float, float), (float, float), (float, float), (float, float), (float, float), (float, float), (float, float), (float, float, float), (float, float, float), float, OPTIONAL(float, None), OPTIONAL(float, None)), 'processor': process_particle_systems, 'aggregator': aggregate_particle_systems },
 	'parties':           { 'parser': (id, str, int, int, int, int, int, int, int, (float, float), [(int, int, int)], OPTIONAL(float, 0)), 'processor': process_parties, 'aggregator': aggregate_parties },
 	'party_templates':   { 'parser': (id, str, int, int, int, int, [(int, int, int, OPTIONAL(int, 0))]), 'processor': process_party_templates, 'aggregator': aggregate_party_templates },
@@ -1500,7 +1500,7 @@ def convert_string_id_to_variable(st, default_src = None):
 	# Let's assume our string is actually identifier name and attempt to divine it from there
 	try:
 		if default_src is not None: return default_src.__getattr__(st)
-	except MSException, e:
+	except MSException as e:
 		raise MSException('illegal string parameter %r: no matching variable or identifier' % st, *e.args)
 	raise MSException('illegal string parameter %r: no matching variable or identifier' % st)
 
@@ -1542,19 +1542,19 @@ def opcode_to_string(opcode):
 	if opcode & this_or_next: result.append('this_or_next')
 	if opcode & neg: result.append('neg')
 	opcode = opcode & 0x3FFFFFFF
-	for key, value in OPLIST.__dict__.iteritems():
+	for key, value in OPLIST.__dict__.items():
 		if value == opcode:
 			result.append(key)
 			break
 	return '|'.join(result)
 
 def simple_trigger_to_string(trigger):
-	for key, value in TRLIST.__dict__.iteritems():
+	for key, value in TRLIST.__dict__.items():
 		if (key[0:3] == 'ti_') and (value == trigger): return key
 	return 'simple_trigger(%.01f)' % trigger
 
 def trigger_to_string(t0, t1, t2):
-	for key, value in TRLIST.__dict__.iteritems():
+	for key, value in TRLIST.__dict__.items():
 		if (key[0:3] == 'ti_') and (value == t0): return key
 	return 'trigger(%.01f %.01f %.01f)' % (t0, t1, t2)
 
@@ -1611,10 +1611,10 @@ def parse_module_code(code_block, script_name, check_can_fail = False):
 		trigger = script_name.split('.', 2)[2].rsplit('(', 1)[0]
 		block = script_name.rsplit('.', 1)[1]
 		num = len(code_block)
-	for index in xrange(len(code_block)):
+	for index in range(len(code_block)):
 		operation = code_block[index]
 		is_assign = False
-		if type(operation) in (int, long):
+		if type(operation) in (int, int):
 			command = [operation, 0]
 		else:
 			command = [operation[0], len(operation) - 1]
@@ -1631,12 +1631,12 @@ def parse_module_code(code_block, script_name, check_can_fail = False):
 			if type(command[2]) == str:
 				try:
 					command[2] = parse_string_operand(command[2], False)
-				except MSException, e:
+				except MSException as e:
 					raise MSException('operation %s cannot assign to operand %r in %s on line %d' % (opcode_to_string(command[0]), command[2], script_name, index + 1), *e.args)
-			elif type(command[2]) in (int, long):
+			elif type(command[2]) in (int, int):
 				try:
 					command[2] = parse_variable_from_int(command[2])
-				except MSException, e:
+				except MSException as e:
 					raise MSException('operation %s cannot assign to operand %r in %s on line %d' % (opcode_to_string(command[0]), command[2], script_name, index + 1), *e.args)
 			if isinstance(command[2], VARIABLE):
 				if command[2].is_expression:
@@ -1650,14 +1650,14 @@ def parse_module_code(code_block, script_name, check_can_fail = False):
 		# Make sure that all operands are legit, allocate local variable ids as necessary
 		local_tmp_depth = 0
 		try:
-			for opindex in xrange(len(command)):
+			for opindex in range(len(command)):
 				if opindex < 2: continue
 				operand = command[opindex]
 				if type(operand) == tuple: command[opindex] = operand = operand[0] # BUGFIX for Taleworlds illegal ACHIEVEMENT_* values
 				if type(operand) == str:
 					try:
 						command[opindex] = operand = parse_string_operand(operand)
-					except MSException, e:
+					except MSException as e:
 						raise MSException('failed to parse operand %r for operation %s in %s on line %d' % (operand, opcode_to_string(command[0]), script_name, index+1), *e.args)
 				if isinstance(operand, VARIABLE):
 					if operand.is_expression:
@@ -1695,13 +1695,13 @@ def parse_module_code(code_block, script_name, check_can_fail = False):
 								WRECK.errors.append('unassigned local variable %r used by operation %s in %s on line %d' % (operand, opcode_to_string(command[0]), script_name, index + 1))
 						if not(is_assign) or (command[0] == try_for_range) or (command[0] == try_for_range_backwards) or (opindex > 2) or (operand.name.find('unused') != -1): locals_use.add(operand.name) # If local was used in non-assigned position, remember it (used to track declared but never used locals)
 						operand.value = opmask_local_variable | WRECK.get_local_id(script_name, operand.name)
-		except MSException, e:
+		except MSException as e:
 			raise MSException('command %r compilation fails in %s on line %d' % (command, script_name, index + 1), *e.args)
 		# Identify can_fail scripts
 		can_fail |= (current_depth < 1) and (((command[0] & 0x3FFFFFFF) in can_fail_operations) or ((command[0] == call_script) and isinstance(command[2], VARIABLE) and (command[2].module == WRECK.script) and (command[2].name[0:3] == 'cf_')))
 		# If command was an assignment, mark the variable as initialized
 		if is_assign:
-			if type(command[2]) in (int, long):
+			if type(command[2]) in (int, int):
 				pass
 			elif isinstance(command[2], VARIABLE):
 				if command[2].module == WRECK.g:
@@ -1715,10 +1715,10 @@ def parse_module_code(code_block, script_name, check_can_fail = False):
 				raise MSException('illegal assignment target %r for operation %s in %s on line %d' % (operation, opcode_to_string(command[0]), script_name, index + 1))
 		# Generate command compiled text
 		try: export.append((' %d' * len(command)) % tuple(command))
-		except Exception, e:
-			print repr(operation)
-			print repr(command)
-			print repr([v.__long__() if isinstance(v, VARIABLE) else v for v in command])
+		except Exception as e:
+			print(repr(operation))
+			print(repr(command))
+			print(repr([v.__long__() if isinstance(v, VARIABLE) else v for v in command]))
 			raise
 	if current_depth != 0:
 		explanation = 'missing' if (current_depth > 0) else 'extra'
@@ -1783,7 +1783,7 @@ def check_syntax(entity, parser, uid = 0):
 					output.append(entity[index])
 					index += 1
 				elif subparser == AGGREGATE:
-					if type(entity[index]) not in (int, long, AGGREGATE):
+					if type(entity[index]) not in (int, int, AGGREGATE):
 						raise MSException('expected aggregate value but found %r at position #%d in %s' % (entity[index], index, compressed_tuple(entity)))
 					output.append(entity[index])
 					index += 1
@@ -1809,20 +1809,20 @@ def check_syntax(entity, parser, uid = 0):
 								index += 1
 						except IndexError:
 							break
-						except MSException, e:
+						except MSException as e:
 							raise MSException('incorrect syntax at position #%d in %s' % (index, compressed_tuple(entity)), *e.args)
 		except IndexError:
-			print formatted_exception()
+			print(formatted_exception())
 			raise MSException('not enough elements in module `%s` entity `%s` (%d total): %s' % (WRECK.current_module, uid, len(entity), compressed_tuple(entity)))
 		if index < len(entity):
 			WRECK.errors.append('too many elements in module `%s` entity `%s` (%d parsed out of total %d): %s' % (WRECK.current_module, uid, index, len(entity), compressed_tuple(entity)))
 		return output
 	if type(parser) == list:
 		output = []
-		for index in xrange(len(entity)):
+		for index in range(len(entity)):
 			try:
 				output.append(check_syntax(entity[index], parser[0], uid))
-			except MSException, e:
+			except MSException as e:
 				raise MSException('failed to parse element #%d' % (index, ), *e.args)
 		return output
 	if parser == troop_item:
@@ -1832,26 +1832,26 @@ def check_syntax(entity, parser, uid = 0):
 			return [check_syntax(entity, int, uid), 0]
 	elif parser == sound_file:
 		if type(entity) == list:
-			return check_syntax(entity, (file, WRECK.fac), uid)
+			return check_syntax(entity, (open, WRECK.fac), uid)
 		else:
-			return [check_syntax(entity, file, uid), 0]		
+			return [check_syntax(entity, open, uid), 0]		
 	elif parser == int:
 		if type(entity) == str: entity = convert_string_id_to_variable(entity)
 		if isinstance(entity, VARIABLE):
 			if not entity.is_static: raise MSException('value of %r is undefined at compile time' % entity)
-		elif type(entity) not in (int, long):
+		elif type(entity) not in (int, int):
 			raise MSException('cannot convert value %r to integer' % (entity, ))
 	elif isinstance(parser, UID):
 		if type(entity) == str: entity = convert_string_id_to_variable(entity, parser)
 		if isinstance(entity, VARIABLE):
 			if not entity.is_static: raise MSException('value of %r is undefined at compile time' % entity)
-		elif type(entity) not in (int, long):
+		elif type(entity) not in (int, int):
 			raise MSException('cannot convert value %r to integer' % (entity, ))
 	elif parser == float:
 		if type(entity) == str: entity = convert_string_id_to_variable(entity)
 		if isinstance(entity, VARIABLE):
 			if not entity.is_static: raise MSException('value of %r is undefined at compile time' % entity)
-		elif type(entity) not in (int, long, float):
+		elif type(entity) not in (int, int, float):
 			raise MSException('cannot convert value %r to float' % (entity, ))
 	elif parser == str:
 		if entity == 0: entity = '0' # DIRTY HACK
@@ -1861,7 +1861,7 @@ def check_syntax(entity, parser, uid = 0):
 	elif parser == id:
 		# TODO: identifier validity check
 		if (type(entity) != str) and (entity not in set([0])): raise MSException('value %r is not a valid identifier' % (entity, ))
-	elif parser == file:
+	elif parser == open:
 		if type(entity) != str: raise MSException('value %r is not a valid filename' % (entity, ))
 		fmod_music_formats = ('wav', 'mp3', 'ogg', 'wma', 'flac', 'aif', 'aiff')
 		if not entity.lower().endswith(fmod_music_formats): WRECK.warnings.append('File %r has unsupported audio file extension.' % (entity, ))
@@ -1946,8 +1946,8 @@ try:
 		import header_operations as OPLIST
 		import header_triggers as TRLIST
 except:
-	print("\nError importing module header files:\n\n%s" % formatted_exception())
-	if 'wait' in sys.argv: raw_input('Press Enter to finish>')
+	print(("\nError importing module header files:\n\n%s" % formatted_exception()))
+	if 'wait' in sys.argv: input('Press Enter to finish>')
 	exit()
 
 if 'depth_operations' not in globals():
@@ -1958,8 +1958,8 @@ if 'depth_operations' not in globals():
 try:
 	from module_constants import *
 except:
-	print("\nError in module_constants.py file:\n\n%s" % formatted_exception())
-	if 'wait' in sys.argv: raw_input('Press Enter to finish>')
+	print(("\nError in module_constants.py file:\n\n%s" % formatted_exception()))
+	if 'wait' in sys.argv: input('Press Enter to finish>')
 	exit()
 
 # OVERRIDING SOME VALUES FROM MODULE SYSTEM HEADERS
@@ -1968,7 +1968,7 @@ def reg(index):
 	return getattr(registers, 'reg%d' % index)
 def pos(index):
 	return getattr(registers, 'pos%d' % index)
-for index in xrange(128):
+for index in range(128):
 	setattr(registers, 'reg%d' % index, opmask_register|index)
 	setattr(registers, 'pos%d' % index, index)
 	globals()['reg%d' % index] = reg(index)
@@ -1978,7 +1978,7 @@ pos_belfry_begin = pos64
 
 def SKILLS(**argd):
 	result = 0x000000000000000000000000000000000000000000
-	for skill_name, value in argd.iteritems():
+	for skill_name, value in argd.items():
 		result |= (value & 0xF) << (WRECK.skl.__getattr__(skill_name) << 2)
 	return result
 
@@ -2005,7 +2005,7 @@ def abundance(x): return AGGREGATE([('abundance', x)])
 def accuracy(x): return AGGREGATE([('leg', x)])
 
 def ATTR(_str, _agi, _int, _cha, _lvl = 0): return AGGREGATE([('str', _str), ('agi', _agi), ('int', _int), ('cha', _cha), ('level', _lvl)])
-for index in xrange(31):
+for index in range(31):
 	if index < 3: continue
 	for attr in ('str', 'agi', 'int', 'cha'):
 		globals()['%s_%d' % (attr, index)] = AGGREGATE({attr:index})
@@ -2029,18 +2029,18 @@ upgrade2 = upgrade = define_troop_upgrade
 
 def generate_skill_constants_for_backwards_compatibility(skills):
 	constants = {}
-	for index in xrange(len(skills)):
+	for index in range(len(skills)):
 		sid = internal_identifier(skills[index][0])
 		limit = min(15, int(skills[index][3])) + 1
 		constants['skl_%s' % sid] = index
-		for level in xrange(limit):
+		for level in range(limit):
 			if not level: continue
 			constants['knows_%s_%d' % (sid, level)] = level << (index << 2)
 	globals().update(constants)
 
 def generate_imod_constants_for_backwards_compatibility(modifiers):
 	constants = {}
-	for index in xrange(len(modifiers)):
+	for index in range(len(modifiers)):
 		sid = internal_identifier(modifiers[index][0])
 		constants['imod_%s' % sid] = index
 		constants['imodbit_%s' % sid] = (1 << index)
@@ -2097,4 +2097,4 @@ DEFAULT_ITEM_MODIFIERS = [
 
 if __name__ == '__main__':
 	value = '0x00000003b9a94de8000903220000424380000c5000002e08'
-	print unparse_terrain_aggregate(value)
+	print(unparse_terrain_aggregate(value))

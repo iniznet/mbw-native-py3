@@ -1,1 +1,5 @@
-__pycache__
+# Pylance cache
+__pycache__/
+
+# Module build
+build/
