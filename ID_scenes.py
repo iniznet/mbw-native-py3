@@ -1,3 +1,4 @@
+scn_none = 0
 scn_random_scene = 0
 scn_conversation_scene = 1
 scn_water = 2
@@ -552,3 +553,4 @@ scn_enterprise_linen_weavery = 550
 scn_enterprise_wool_weavery = 551
 scn_enterprise_brewery = 552
 scn_enterprise_oil_press = 553
+scn_exit = 100000

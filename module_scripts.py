@@ -33127,7 +33127,7 @@ scripts = [
        (assign, ":camera_distance", 360),
        (assign, ":camera_yaw", -15),
        (assign, ":camera_pitch", -18),
-       (assign, ":animation", anim_stand_man),
+       (assign, ":animation", "anim_stand_man"),
        
        (position_set_z, pos5, ":cam_height"),
 
@@ -33183,7 +33183,7 @@ scripts = [
        (assign, ":camera_distance", 380),
        (assign, ":camera_yaw", -15),
        (assign, ":camera_pitch", -18),
-       (assign, ":animation", anim_stand_man),
+       (assign, ":animation", "anim_stand_man"),
        
        (position_set_z, pos5, ":cam_height"),
 
@@ -33234,7 +33234,7 @@ scripts = [
        (assign, ":camera_distance", 380),
        (assign, ":camera_yaw", -15),
        (assign, ":camera_pitch", -18),
-       (assign, ":animation", anim_stand_man),
+       (assign, ":animation", "anim_stand_man"),
        
        (position_set_z, pos5, ":cam_height"),
 
@@ -33418,7 +33418,7 @@ scripts = [
        (assign, ":camera_distance", 450),
        (assign, ":camera_yaw", 15),
        (assign, ":camera_pitch", -18),
-       (assign, ":animation", anim_stand_man),
+       (assign, ":animation", "anim_stand_man"),
        
        (troop_get_inventory_slot, ":horse_item", ":troop_no", ek_horse),
        (try_begin),
@@ -46349,7 +46349,8 @@ scripts = [
 	    (store_sub, ":cur_good_price_slot", ":secondary_raw_material", trade_goods_begin),
 	    (val_add, ":cur_good_price_slot", slot_town_trade_good_prices_begin),
 	    (party_get_slot, ":cur_price_modifier", ":center", ":cur_good_price_slot"),
-
+      (store_mul, ":final_price_for_secondary_input", ":base_price", ":cur_price_modifier"),
+      
 	    (try_begin),
 	      (lt, ":number_of_inputs_required", 0),
 	      (store_div, ":final_price_for_secondary_input", ":final_price_for_secondary_input", 2),
@@ -49608,7 +49609,7 @@ scripts = [
        (assign, ":camera_distance", 1000),
        (assign, ":camera_yaw", -15),
        (assign, ":camera_pitch", -18),
-       (assign, ":animation", anim_stand_man),
+       (assign, ":animation", "anim_stand_man"),
 	   
 	   (troop_get_inventory_slot, ":horse_item", ":troop_no", ek_horse),
        (try_begin),
