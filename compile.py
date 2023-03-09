@@ -1,4 +1,4 @@
-WRECK_VERSION = '1.0.6'
+WRECK_VERSION = '1.0.6 (Python 3.9 compatible)'
 
 import sys
 sys.dont_write_bytecode = True
