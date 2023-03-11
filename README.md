@@ -11,6 +11,7 @@ You might want to use builder helpers to help you to develop your mod easier and
 - [x] Port WRECK to python 3
 - [x] Port modSys to python 3
 - [ ] Modularize modSys into separate folder, to make it easier to maintain (Waiting for important builder helpers to be ready)
+- [ ] Import Diplomacy mod
 - [ ] Add more documentation
 
 ## Known issues
